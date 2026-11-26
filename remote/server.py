@@ -21,7 +21,7 @@ CONFIG_PATH = os.path.join(HERE, "config.json")
 TOKEN_PATH = os.path.join(HERE, "tv_token.txt")
 STATIC_DIR = os.path.join(HERE, "static")
 
-TINXY_API = "https://ha-backend.tinxy.in/"
+TINXY_API = "https://backend.tinxy.in/"
 APP_NAME = "MotoE Remote"
 
 
