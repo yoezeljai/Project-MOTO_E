@@ -20,8 +20,8 @@ if [ ! -f "$KS" ]; then
     -alias motoe -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=MotoE Remote" >/dev/null
 fi
 
-build() {  # name package url icon
-  local name=$1 pkg=$2 url=$3 icon=$4
+build() {  # name package url icon [stand]
+  local name=$1 pkg=$2 url=$3 icon=$4 stand=${5:-}
   local w=out/build-$icon
   rm -rf "$w" && mkdir -p "$w/res/values" "$w/gen" "$w/classes"
   for d in mdpi hdpi xhdpi; do
@@ -34,13 +34,17 @@ build() {  # name package url icon
   <string name="page_url">$url</string>
 </resources>
 EOF
-  sed "s/@PACKAGE@/$pkg/" AndroidManifest.xml.in > "$w/AndroidManifest.xml"
+  local recv=""
+  if [ -n "$stand" ]; then
+    recv='        <receiver android:name="com.motoe.webapp.PowerReceiver"><intent-filter><action android:name="android.intent.action.ACTION_POWER_CONNECTED" /></intent-filter></receiver>'
+  fi
+  sed -e "s/@PACKAGE@/$pkg/" -e "s#@RECEIVER@#$recv#" AndroidManifest.xml.in > "$w/AndroidManifest.xml"
 
   "$BT/aapt2" compile --dir "$w/res" -o "$w/res.zip"
   "$BT/aapt2" link -o "$w/base.apk" -I "$JAR" --manifest "$w/AndroidManifest.xml" \
     --java "$w/gen" --custom-package com.motoe.webapp "$w/res.zip"
   javac -source 8 -target 8 -bootclasspath "$JAR" -classpath "$JAR" -d "$w/classes" \
-    "$w/gen/com/motoe/webapp/R.java" src/com/motoe/webapp/MainActivity.java 2>&1 | grep -v "warning" || true
+    "$w/gen/com/motoe/webapp/R.java" src/com/motoe/webapp/*.java 2>&1 | grep -v "warning" || true
   "$BT/d8" --min-api 21 --lib "$JAR" --output "$w" $(find "$w/classes" -name '*.class')
   (cd "$w" && zip -q base.apk classes.dex)
   "$BT/zipalign" -f 4 "$w/base.apk" "$w/aligned.apk"
@@ -51,3 +55,5 @@ EOF
 
 build Lights com.motoe.lights http://127.0.0.1:8765/lights lights
 build TV     com.motoe.tv     http://127.0.0.1:8765/tv     tv
+build Clock  com.motoe.clock  http://127.0.0.1:8765/clock  clock
+build Stand  com.motoe.stand  http://127.0.0.1:8765/stand  stand stand

@@ -13,6 +13,7 @@ import socket
 import ssl
 import sys
 import urllib.error
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -162,6 +163,56 @@ def tv_is_on():
         return False
 
 
+# ---------------------------------------------------------------- Weather + photo frame
+
+import time
+
+WEATHER_URL = ("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
+               "&current=temperature_2m,relative_humidity_2m,weather_code"
+               "&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto")
+_weather_cache = {"at": 0, "data": None}
+
+# WMO weather codes -> short text
+WMO = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog", 48: "Fog",
+       51: "Light drizzle", 53: "Drizzle", 55: "Heavy drizzle", 61: "Light rain", 63: "Rain",
+       65: "Heavy rain", 80: "Showers", 81: "Showers", 82: "Heavy showers",
+       95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm"}
+
+
+def weather():
+    """Current weather for the configured city, cached for 15 minutes (free, no API key)."""
+    if _weather_cache["data"] and time.time() - _weather_cache["at"] < 900:
+        return _weather_cache["data"]
+    url = WEATHER_URL % (CONFIG.get("lat", 12.97), CONFIG.get("lon", 77.59))
+    with urllib.request.urlopen(url, timeout=10) as resp:
+        raw = json.loads(resp.read().decode())
+    cur, day = raw["current"], raw["daily"]
+    data = {
+        "city": CONFIG.get("city", "Bangalore"),
+        "temp": round(cur["temperature_2m"]),
+        "humidity": cur.get("relative_humidity_2m"),
+        "text": WMO.get(cur.get("weather_code"), ""),
+        "max": round(day["temperature_2m_max"][0]),
+        "min": round(day["temperature_2m_min"][0]),
+    }
+    _weather_cache.update(at=time.time(), data=data)
+    return data
+
+
+PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp")
+
+
+def photo_dir():
+    return os.path.expanduser(CONFIG.get("photo_dir", "~/storage/shared/Pictures/Frame"))
+
+
+def photos():
+    try:
+        return sorted(f for f in os.listdir(photo_dir()) if f.lower().endswith(PHOTO_EXT))
+    except OSError:
+        return []
+
+
 # ---------------------------------------------------------------- HTTP server
 
 ALLOWED_KEYS = {
@@ -174,7 +225,8 @@ ALLOWED_KEYS = {
 PAGES = {
     "/": "index.html", "/index.html": "index.html",
     "/lights": "lights.html", "/tv": "tv.html",
-    "/style.css": "style.css",
+    "/clock": "clock.html", "/frame": "frame.html", "/stand": "stand.html",
+    "/style.css": "style.css", "/stand.js": "stand.js",
 }
 
 
@@ -193,7 +245,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _static(self, name):
         path = os.path.join(STATIC_DIR, name)
-        ctype = "text/html; charset=utf-8" if name.endswith(".html") else "text/css"
+        ctype = {"html": "text/html; charset=utf-8", "css": "text/css",
+                 "js": "application/javascript"}[name.rsplit(".", 1)[-1]]
         with open(path, "rb") as f:
             body = f.read()
         self.send_response(200)
@@ -221,6 +274,25 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"lights": lights, "tinxy_error": err})
         elif path == "/api/tv/state":
             self._json({"tv_on": tv_is_on()})
+        elif path == "/api/weather":
+            try:
+                self._json(weather())
+            except Exception as exc:
+                self._json({"error": str(exc)}, 502)
+        elif path == "/api/photos":
+            self._json({"photos": photos(), "interval": int(CONFIG.get("photo_seconds", 60))})
+        elif path.startswith("/photo/"):
+            name = urllib.parse.unquote(path[len("/photo/"):])
+            if "/" in name or name not in photos():
+                return self._json({"error": "not found"}, 404)
+            ext = name.lower().rsplit(".", 1)[-1]
+            with open(os.path.join(photo_dir(), name), "rb") as f:
+                body = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "image/" + ("jpeg" if ext in ("jpg", "jpeg") else ext))
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
         elif path == "/api/state":  # combined, kept for the original page
             lights, err = self._lights()
             self._json({"lights": lights, "tinxy_error": err, "tv_on": tv_is_on()})

@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Stand</title></head>
+<body style="background:#000">
+<script>
+var m = 'clock';
+try { m = localStorage.getItem('standMode') || 'clock'; } catch (e) {}
+location.replace('/' + (m === 'frame' ? 'frame' : 'clock'));
+</script>
+</body></html>
