@@ -1,0 +1,4 @@
+# Secrets and per-device state: never commit
+remote/config.json
+remote/tv_token.txt
+__pycache__/

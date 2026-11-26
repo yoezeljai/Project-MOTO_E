@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Home Remote</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 10px; background: #111; color: #eee; font-family: sans-serif; }
+  h2 { font-size: 15px; color: #999; margin: 14px 4px 6px; text-transform: uppercase; letter-spacing: 1px; }
+  .grid { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+  button { -webkit-flex: 1 0 30%; flex: 1 0 30%; margin: 4px; padding: 16px 4px; font-size: 16px;
+           border: 0; border-radius: 10px; background: #2a2a2a; color: #eee; }
+  button:active { background: #444; }
+  .light { -webkit-flex-basis: 45%; flex-basis: 45%; text-align: left; padding-left: 14px; }
+  .light.on { background: #e8a317; color: #111; }
+  .wide { -webkit-flex-basis: 95%; flex-basis: 95%; }
+  #status { font-size: 13px; color: #aaa; margin: 6px 4px; min-height: 18px; }
+  .tvon { color: #5c5; } .tvoff { color: #c55; }
+</style>
+</head>
+<body>
+<div id="status">Loading...</div>
+
+<h2>Lights</h2>
+<div class="grid" id="lights"></div>
+
+<h2>TV <span id="tvstate"></span></h2>
+<div class="grid">
+  <button onclick="tvOn()">Power on</button>
+  <button onclick="key('KEY_POWER')">Power off</button>
+  <button onclick="key('KEY_SOURCE')">Input</button>
+  <button onclick="key('KEY_VOLDOWN')">Vol −</button>
+  <button onclick="key('KEY_MUTE')">Mute</button>
+  <button onclick="key('KEY_VOLUP')">Vol +</button>
+  <button onclick="key('KEY_CHDOWN')">Ch −</button>
+  <button onclick="key('KEY_UP')">▲</button>
+  <button onclick="key('KEY_CHUP')">Ch +</button>
+  <button onclick="key('KEY_LEFT')">◀</button>
+  <button onclick="key('KEY_ENTER')">OK</button>
+  <button onclick="key('KEY_RIGHT')">▶</button>
+  <button onclick="key('KEY_RETURN')">Back</button>
+  <button onclick="key('KEY_DOWN')">▼</button>
+  <button onclick="key('KEY_HOME')">Home</button>
+</div>
+
+<script>
+// ES5 only: the phone's Android 7 browser is old.
+function api(method, path, body, cb) {
+  var x = new XMLHttpRequest();
+  x.open(method, path, true);
+  x.setRequestHeader('Content-Type', 'application/json');
+  x.onreadystatechange = function () {
+    if (x.readyState !== 4) return;
+    var data = null;
+    try { data = JSON.parse(x.responseText); } catch (e) {}
+    cb(x.status === 200 ? null : ((data && data.error) || 'HTTP ' + x.status), data);
+  };
+  x.send(body ? JSON.stringify(body) : null);
+}
+function say(msg) { document.getElementById('status').textContent = msg; }
+
+function render(state) {
+  var box = document.getElementById('lights');
+  box.innerHTML = '';
+  state.lights.forEach(function (l) {
+    var b = document.createElement('button');
+    b.className = 'light' + (l.on ? ' on' : '');
+    b.textContent = l.name;
+    b.onclick = function () {
+      var want = !l.on;
+      say('Switching ' + l.name + '...');
+      api('POST', '/api/light', { id: l.id, number: l.number, on: want }, function (err) {
+        if (err) return say('Light error: ' + err);
+        l.on = want; b.className = 'light' + (want ? ' on' : ''); say('');
+      });
+    };
+    box.appendChild(b);
+  });
+  var t = document.getElementById('tvstate');
+  t.textContent = state.tv_on ? '● on' : '● off';
+  t.className = state.tv_on ? 'tvon' : 'tvoff';
+  say(state.tinxy_error ? 'Tinxy error: ' + state.tinxy_error : '');
+}
+
+function refresh() {
+  api('GET', '/api/state', null, function (err, data) {
+    if (err) return say('Server error: ' + err);
+    render(data);
+  });
+}
+function key(k) {
+  api('POST', '/api/tv/key', { key: k }, function (err) { say(err ? 'TV error: ' + err : ''); });
+}
+function tvOn() {
+  say('Waking TV...');
+  api('POST', '/api/tv/on', null, function (err) {
+    say(err ? 'TV error: ' + err : 'Wake signal sent');
+    setTimeout(refresh, 8000);
+  });
+}
+
+refresh();
+setInterval(refresh, 30000);
+</script>
+</body>
+</html>
