@@ -122,7 +122,13 @@ def tv_send_key(key):
                 # The TV uses a self-signed certificate; this only talks to the TV on the home LAN.
                 sslopt={"cert_reqs": ssl.CERT_NONE, "check_hostname": False} if secure else None,
             )
-            hello = json.loads(ws.recv())
+            # First connection shows an Allow prompt on the TV; give the user time to accept it.
+            ws.settimeout(30)
+            try:
+                hello = json.loads(ws.recv())
+            except websocket.WebSocketProtocolException:
+                # The TV closes with code 1005 / "notack" when this remote is not allowed.
+                raise RuntimeError("TV rejected the connection (Allow prompt denied or missed)")
             if hello.get("event") != "ms.channel.connect":
                 raise RuntimeError("TV refused: %s" % hello.get("event"))
             new_token = (hello.get("data") or {}).get("token")
