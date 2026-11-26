@@ -251,6 +251,7 @@ PAGES = {
     "/lights": "lights.html", "/tv": "tv.html",
     "/clock": "clock.html", "/frame": "frame.html", "/stand": "stand.html",
     "/style.css": "style.css", "/stand.js": "stand.js",
+    "/wallpaper.jpg": "wallpaper.jpg",
 }
 
 
@@ -270,7 +271,7 @@ class Handler(BaseHTTPRequestHandler):
     def _static(self, name):
         path = os.path.join(STATIC_DIR, name)
         ctype = {"html": "text/html; charset=utf-8", "css": "text/css",
-                 "js": "application/javascript"}[name.rsplit(".", 1)[-1]]
+                 "js": "application/javascript", "jpg": "image/jpeg"}[name.rsplit(".", 1)[-1]]
         with open(path, "rb") as f:
             body = f.read()
         self.send_response(200)
