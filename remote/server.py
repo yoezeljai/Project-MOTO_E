@@ -69,21 +69,17 @@ def tinxy_list():
     return out
 
 
-def tinxy_states():
-    """Map 'id:number' -> True/False (on/off). Best effort."""
-    states = {}
+def tinxy_state(dev_id, number):
+    """True/False for one switch, or None if Tinxy doesn't say. Best effort."""
     try:
-        for item in tinxy_request("v2/devices_state"):
-            dev_id = item.get("_id") or item.get("deviceId")
-            st = item.get("state")
-            if isinstance(st, list):
-                for n, s in enumerate(st):
-                    states["%s:%d" % (dev_id, n + 1)] = (s.get("state") == "ON")
-            elif isinstance(st, dict):
-                states["%s:1" % dev_id] = (st.get("state") == "ON")
+        st = tinxy_request("v2/devices/%s/state?deviceNumber=%d" % (dev_id, int(number)))
+        if isinstance(st, list) and st:
+            st = st[0]
+        if isinstance(st, dict) and "state" in st:
+            return st["state"] in ("ON", 1, True)
     except Exception as exc:  # state is optional; buttons still work without it
         print("tinxy state error:", exc)
-    return states
+    return None
 
 
 def tinxy_set(dev_id, number, on):
@@ -200,9 +196,8 @@ class Handler(BaseHTTPRequestHandler):
         elif self.path == "/api/state":
             try:
                 lights = tinxy_list()
-                states = tinxy_states()
                 for l in lights:
-                    l["on"] = states.get("%s:%d" % (l["id"], l["number"]))
+                    l["on"] = tinxy_state(l["id"], l["number"])
                 tinxy_err = None
             except Exception as exc:
                 lights, tinxy_err = [], str(exc)
