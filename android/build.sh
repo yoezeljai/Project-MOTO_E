@@ -23,6 +23,8 @@ fi
 build() {  # name package url icon [stand]
   local name=$1 pkg=$2 url=$3 icon=$4 stand=${5:-}
   local w=out/build-$icon
+  local immersive=0
+  if [ "$icon" = clock ] || [ "$icon" = stand ]; then immersive=1; fi
   rm -rf "$w" && mkdir -p "$w/res/values" "$w/gen" "$w/classes"
   for d in mdpi hdpi xhdpi; do
     mkdir -p "$w/res/mipmap-$d"
@@ -32,6 +34,7 @@ build() {  # name package url icon [stand]
 <resources>
   <string name="app_name">$name</string>
   <string name="page_url">$url</string>
+  <string name="immersive">$immersive</string>
 </resources>
 EOF
   local recv="" perms="" orient=portrait

@@ -67,11 +67,44 @@ public class MainActivity extends Activity {
         }, 4000);
     }
 
+    /** Clock/Stand only: hide status and navigation bars. A tap shows them; they hide again after 3 s. */
+    private boolean immersive() {
+        return "1".equals(getString(R.string.immersive));
+    }
+
+    private final Runnable hideBars = new Runnable() {
+        public void run() {
+            getWindow().getDecorView().setSystemUiVisibility(
+                    View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                    | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+                    | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                    | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION   // "lean back": any tap brings the bars back
+                    | View.SYSTEM_UI_FLAG_FULLSCREEN);
+        }
+    };
+
     @Override
     protected void onResume() {
         super.onResume();
-        web.getRootView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        if (immersive()) {
+            getWindow().getDecorView().setOnSystemUiVisibilityChangeListener(
+                    new View.OnSystemUiVisibilityChangeListener() {
+                        public void onSystemUiVisibilityChange(int vis) {
+                            if ((vis & View.SYSTEM_UI_FLAG_FULLSCREEN) == 0) {
+                                handler.removeCallbacks(hideBars);
+                                handler.postDelayed(hideBars, 3000);
+                            }
+                        }
+                    });
+            hideBars.run();
+        }
         web.reload();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus && immersive()) hideBars.run();
     }
 
     @Override
