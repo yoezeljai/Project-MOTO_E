@@ -39,9 +39,20 @@ function tick() {
     DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
   document.body.className = window.innerWidth > window.innerHeight ? 'land' : '';
 }
+var pos = null;
+function locate() {
+  // GPS only (no Google location services): use the last fix up to 1 h old, else try a fresh one.
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(function (p) {
+    var first = !pos;
+    pos = p.coords;
+    if (first) weather();
+  }, function () {}, { enableHighAccuracy: false, maximumAge: 3600000, timeout: 60000 });
+}
 function weather() {
   var x = new XMLHttpRequest();
-  x.open('GET', '/api/weather', true);
+  var q = pos ? '?lat=' + pos.latitude.toFixed(3) + '&lon=' + pos.longitude.toFixed(3) : '';
+  x.open('GET', '/api/weather' + q, true);
   x.onreadystatechange = function () {
     if (x.readyState !== 4 || x.status !== 200) return;
     var w = JSON.parse(x.responseText);
@@ -52,6 +63,7 @@ function weather() {
 }
 tick(); setInterval(tick, 1000);
 weather(); setInterval(weather, 15 * 60 * 1000);
+locate(); setInterval(locate, 30 * 60 * 1000);
 </script>
 </body>
 </html>

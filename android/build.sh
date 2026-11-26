@@ -34,11 +34,14 @@ build() {  # name package url icon [stand]
   <string name="page_url">$url</string>
 </resources>
 EOF
-  local recv=""
+  local recv="" perms=""
+  if [ "$icon" = clock ] || [ "$icon" = stand ]; then
+    perms='    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />'
+  fi
   if [ -n "$stand" ]; then
     recv='        <receiver android:name="com.motoe.webapp.PowerReceiver"><intent-filter><action android:name="android.intent.action.ACTION_POWER_CONNECTED" /></intent-filter></receiver>'
   fi
-  sed -e "s/@PACKAGE@/$pkg/" -e "s#@RECEIVER@#$recv#" AndroidManifest.xml.in > "$w/AndroidManifest.xml"
+  sed -e "s/@PACKAGE@/$pkg/" -e "s#@RECEIVER@#$recv#" -e "s#@PERMS@#$perms#" AndroidManifest.xml.in > "$w/AndroidManifest.xml"
 
   "$BT/aapt2" compile --dir "$w/res" -o "$w/res.zip"
   "$BT/aapt2" link -o "$w/base.apk" -I "$JAR" --manifest "$w/AndroidManifest.xml" \

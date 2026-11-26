@@ -170,7 +170,7 @@ import time
 WEATHER_URL = ("https://api.open-meteo.com/v1/forecast?latitude=%s&longitude=%s"
                "&current=temperature_2m,relative_humidity_2m,weather_code"
                "&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto")
-_weather_cache = {"at": 0, "data": None}
+_weather_cache = {}
 
 # WMO weather codes -> short text
 WMO = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog", 48: "Fog",
@@ -179,23 +179,47 @@ WMO = {0: "Clear", 1: "Mostly clear", 2: "Partly cloudy", 3: "Cloudy", 45: "Fog"
        95: "Thunderstorm", 96: "Thunderstorm", 99: "Thunderstorm"}
 
 
-def weather():
-    """Current weather for the configured city, cached for 15 minutes (free, no API key)."""
-    if _weather_cache["data"] and time.time() - _weather_cache["at"] < 900:
-        return _weather_cache["data"]
-    url = WEATHER_URL % (CONFIG.get("lat", 12.97), CONFIG.get("lon", 77.59))
-    with urllib.request.urlopen(url, timeout=10) as resp:
+REVERSE_URL = ("https://api.bigdatacloud.net/data/reverse-geocode-client"
+               "?latitude=%s&longitude=%s&localityLanguage=en")
+
+
+def _place(lat, lon):
+    """City name for a location (free, no key). Falls back to coordinates."""
+    try:
+        with urllib.request.urlopen(REVERSE_URL % (lat, lon), timeout=8) as resp:
+            r = json.loads(resp.read().decode())
+        return (r.get("city") or r.get("locality") or r.get("principalSubdivision")
+                or "%.2f, %.2f" % (lat, lon))
+    except Exception:
+        return "%.2f, %.2f" % (lat, lon)
+
+
+def weather(lat=None, lon=None):
+    """Current weather (free, no API key), cached 15 min per ~1 km area.
+
+    lat/lon come from the phone's GPS via the page; without them, the configured city is used.
+    """
+    if lat is None or lon is None:
+        lat, lon = CONFIG.get("lat", 12.97), CONFIG.get("lon", 77.59)
+        city = CONFIG.get("city", "Bangalore")
+    else:
+        lat, lon, city = round(float(lat), 2), round(float(lon), 2), None
+    key = (lat, lon)
+    hit = _weather_cache.get(key)
+    if hit and time.time() - hit[0] < 900:
+        return hit[1]
+    with urllib.request.urlopen(WEATHER_URL % (lat, lon), timeout=10) as resp:
         raw = json.loads(resp.read().decode())
     cur, day = raw["current"], raw["daily"]
     data = {
-        "city": CONFIG.get("city", "Bangalore"),
+        "city": city or _place(lat, lon),
         "temp": round(cur["temperature_2m"]),
         "humidity": cur.get("relative_humidity_2m"),
         "text": WMO.get(cur.get("weather_code"), ""),
         "max": round(day["temperature_2m_max"][0]),
         "min": round(day["temperature_2m_min"][0]),
     }
-    _weather_cache.update(at=time.time(), data=data)
+    _weather_cache[key] = (time.time(), data)
     return data
 
 
@@ -275,8 +299,9 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/tv/state":
             self._json({"tv_on": tv_is_on()})
         elif path == "/api/weather":
+            q = urllib.parse.parse_qs(self.path.partition("?")[2])
             try:
-                self._json(weather())
+                self._json(weather(q.get("lat", [None])[0], q.get("lon", [None])[0]))
             except Exception as exc:
                 self._json({"error": str(exc)}, 502)
         elif path == "/api/photos":

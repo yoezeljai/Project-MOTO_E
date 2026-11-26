@@ -6,6 +6,11 @@ import android.os.Handler;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.Manifest;
+import android.content.pm.PackageManager;
+import android.os.Build;
+import android.webkit.GeolocationPermissions;
+import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebView;
@@ -26,6 +31,20 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.getSettings().setJavaScriptEnabled(true);
+        web.getSettings().setGeolocationEnabled(true);
+        web.getSettings().setDomStorageEnabled(true);  // stand mode remembers clock/frame
+        web.setWebChromeClient(new WebChromeClient() {
+            @Override
+            public void onGeolocationPermissionsShowPrompt(String origin, GeolocationPermissions.Callback cb) {
+                cb.invoke(origin, true, false);  // only our own local pages are loaded
+            }
+        });
+        // Only the Clock and Stand apps declare location; for the others this is a silent no-op.
+        if (Build.VERSION.SDK_INT >= 23
+                && checkSelfPermission(Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[] {Manifest.permission.ACCESS_FINE_LOCATION,
+                    Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+        }
         web.setBackgroundColor(0xFF12161B);
         web.setWebViewClient(new WebViewClient() {
             @Override
