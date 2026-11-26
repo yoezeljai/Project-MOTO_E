@@ -7,7 +7,7 @@
     <application android:label="@string/app_name" android:icon="@mipmap/ic_launcher"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name="com.motoe.webapp.MainActivity"
-            android:screenOrientation="portrait"
+            android:screenOrientation="@ORIENT@"
             android:configChanges="orientation|screenSize|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

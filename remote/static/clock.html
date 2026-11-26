@@ -15,6 +15,12 @@
   #wx { font-size: 4.6vw; color: #c7d3da; margin-top: 9vw; }
   #wx b { font-size: 9vw; font-weight: 200; display: block; color: #e8ecef; }
   body.land #time { font-size: 22vw; }
+  /* "Paper" look: e-ink style, like a Kindle */
+  body.paper { background: #efece4; color: #161616; font-family: Georgia, 'Noto Serif', serif; }
+  body.paper #time { font-weight: 400; letter-spacing: 0; }
+  body.paper #date, body.paper #wx { color: #444; }
+  body.paper #wx b { color: #161616; font-weight: 400; }
+  body.paper #modes a { background: #dedad0; color: #161616; }
   #modes { position: fixed; bottom: 18px; left: 0; right: 0; text-align: center; display: none; }
   #modes a { color: #e8ecef; background: #222a33; padding: 12px 18px; border-radius: 12px;
              margin: 0 6px; text-decoration: none; font-size: 16px; }
@@ -26,7 +32,7 @@
   <div id="date"></div>
   <div id="wx"></div>
 </div>
-<div id="modes"><a href="#" onclick="go('clock')">Clock</a><a href="#" onclick="go('frame')">Photo frame</a></div>
+<div id="modes"><a href="#" onclick="return go('clock')">Clock</a><a href="#" onclick="return go('frame')">Photo frame</a><a href="#" onclick="return paper()">Paper look</a></div>
 <script src="/stand.js"></script>
 <script>
 var DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -37,7 +43,14 @@ function tick() {
   document.getElementById('time').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes());
   document.getElementById('date').textContent =
     DAYS[d.getDay()] + ', ' + d.getDate() + ' ' + MONTHS[d.getMonth()];
-  document.body.className = window.innerWidth > window.innerHeight ? 'land' : '';
+  document.body.className = (window.innerWidth > window.innerHeight ? 'land' : '') +
+    (isPaper() ? ' paper' : '');
+}
+function isPaper() { try { return localStorage.getItem('paper') === '1'; } catch (e) { return false; } }
+function paper() {
+  try { localStorage.setItem('paper', isPaper() ? '0' : '1'); } catch (e) {}
+  tick();
+  return false;
 }
 var pos = null;
 function locate() {
@@ -62,6 +75,7 @@ function weather() {
   x.send();
 }
 tick(); setInterval(tick, 1000);
+window.addEventListener('resize', tick);
 weather(); setInterval(weather, 15 * 60 * 1000);
 locate(); setInterval(locate, 30 * 60 * 1000);
 </script>
