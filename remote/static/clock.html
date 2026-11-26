@@ -15,6 +15,14 @@
   #wx { font-size: 4.6vw; color: #c7d3da; margin-top: 9vw; }
   #wx b { font-size: 9vw; font-weight: 200; display: block; color: #e8ecef; }
   body.land #time { font-size: 22vw; }
+  /* Landscape (phone sideways on the stand): size by height so the time isn't cut off. */
+  @media (orientation: landscape) {
+    body #time, body.land #time { font-size: 34vh; }
+    #date { font-size: 6.5vh; margin-top: 1vh; }
+    #wx { font-size: 6vh; margin-top: 5vh; }
+    #wx b { font-size: 12vh; }
+    .wrap { -webkit-transform: translateY(-50%); transform: translateY(-50%); }
+  }
   /* "Paper" look: e-ink style, like a Kindle */
   body.paper { background: #efece4; color: #161616; font-family: Georgia, 'Noto Serif', serif; }
   body.paper #time { font-weight: 400; letter-spacing: 0; }
