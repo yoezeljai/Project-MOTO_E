@@ -5,5 +5,7 @@
   "broadcast_ip": "255.255.255.255",
   "hide_tinxy": [],
   "listen": "127.0.0.1",
-  "port": 8765
+  "port": 8765,
+  "background": "",
+  "city": "Bangalore"
 }

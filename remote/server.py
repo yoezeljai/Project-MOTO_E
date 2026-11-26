@@ -270,6 +270,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def _static(self, name):
         path = os.path.join(STATIC_DIR, name)
+        if name == "wallpaper.jpg" and CONFIG.get("background"):
+            path = os.path.expanduser(CONFIG["background"])  # e.g. the phone's own wallpaper
         ctype = {"html": "text/html; charset=utf-8", "css": "text/css",
                  "js": "application/javascript", "jpg": "image/jpeg"}[name.rsplit(".", 1)[-1]]
         with open(path, "rb") as f:
