@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>TV</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<h1>TV <small id="tvstate"></small></h1>
+<div class="grid">
+  <button class="power" onclick="tvOn()">Power on</button>
+  <button class="power" onclick="key('KEY_POWER')">Power off</button>
+  <button onclick="key('KEY_SOURCE')">Input</button>
+  <button onclick="key('KEY_VOLDOWN')">Vol −</button>
+  <button onclick="key('KEY_MUTE')">Mute</button>
+  <button onclick="key('KEY_VOLUP')">Vol +</button>
+  <button onclick="key('KEY_CHDOWN')">Ch −</button>
+  <button onclick="key('KEY_UP')">▲</button>
+  <button onclick="key('KEY_CHUP')">Ch +</button>
+  <button onclick="key('KEY_LEFT')">◀</button>
+  <button onclick="key('KEY_ENTER')">OK</button>
+  <button onclick="key('KEY_RIGHT')">▶</button>
+  <button onclick="key('KEY_RETURN')">Back</button>
+  <button onclick="key('KEY_DOWN')">▼</button>
+  <button onclick="key('KEY_HOME')">Home</button>
+  <button onclick="key('KEY_PLAY')">Play</button>
+  <button onclick="key('KEY_PAUSE')">Pause</button>
+  <button onclick="key('KEY_MENU')">Menu</button>
+</div>
+<div id="status"></div>
+<script>
+function api(method, path, body, cb) {
+  var x = new XMLHttpRequest();
+  x.open(method, path, true);
+  x.setRequestHeader('Content-Type', 'application/json');
+  x.onreadystatechange = function () {
+    if (x.readyState !== 4) return;
+    var data = null;
+    try { data = JSON.parse(x.responseText); } catch (e) {}
+    cb(x.status === 200 ? null : ((data && data.error) || 'HTTP ' + x.status), data);
+  };
+  x.send(body ? JSON.stringify(body) : null);
+}
+function say(m) { document.getElementById('status').textContent = m; }
+function refresh() {
+  api('GET', '/api/tv/state', null, function (err, d) {
+    var t = document.getElementById('tvstate');
+    if (err) { t.textContent = ''; return say('Remote server not running? ' + err); }
+    t.textContent = d.tv_on ? '● on' : '● off';
+    t.className = d.tv_on ? 'on-dot' : 'off-dot';
+  });
+}
+function key(k) {
+  say('...');
+  api('POST', '/api/tv/key', { key: k }, function (err) { say(err ? 'TV error: ' + err : ''); });
+}
+function tvOn() {
+  say('Waking TV...');
+  api('POST', '/api/tv/on', null, function (err) {
+    say(err ? 'TV error: ' + err : 'Wake signal sent');
+    setTimeout(refresh, 8000);
+  });
+}
+refresh();
+setInterval(refresh, 15000);
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+body { margin: 0; padding: 14px 10px; background: #12161b; color: #e8ecef;
+       font-family: sans-serif; }
+h1 { font-size: 20px; font-weight: 300; margin: 4px 6px 12px; letter-spacing: 1px; }
+h1 small { font-size: 13px; margin-left: 8px; }
+.grid { display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; }
+button { -webkit-flex: 1 0 30%; flex: 1 0 30%; margin: 5px; padding: 18px 4px; font-size: 17px;
+         border: 0; border-radius: 14px; background: #222a33; color: #e8ecef; }
+button:active { background: #33404d; }
+.light { -webkit-flex-basis: 45%; flex-basis: 45%; padding: 26px 8px; font-size: 18px; }
+.light.on { background: #f2c14e; color: #1a1a1a; }
+.light.unknown { opacity: .75; }
+.wide { -webkit-flex-basis: 95%; flex-basis: 95%; }
+.power { background: #3a2a2a; }
+#status { font-size: 13px; color: #9aa5ae; margin: 8px 6px; min-height: 18px; }
+.on-dot { color: #6c6; } .off-dot { color: #c66; }

@@ -2,3 +2,4 @@
 remote/config.json
 remote/tv_token.txt
 __pycache__/
+android/out/

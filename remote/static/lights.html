@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Lights</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<h1>Lights</h1>
+<div class="grid" id="lights"></div>
+<div id="status">Loading...</div>
+<script>
+// ES5 only: Android 7 WebView.
+function api(method, path, body, cb) {
+  var x = new XMLHttpRequest();
+  x.open(method, path, true);
+  x.setRequestHeader('Content-Type', 'application/json');
+  x.onreadystatechange = function () {
+    if (x.readyState !== 4) return;
+    var data = null;
+    try { data = JSON.parse(x.responseText); } catch (e) {}
+    cb(x.status === 200 ? null : ((data && data.error) || 'HTTP ' + x.status), data);
+  };
+  x.send(body ? JSON.stringify(body) : null);
+}
+function say(m) { document.getElementById('status').textContent = m; }
+var busy = false;
+
+function render(lights) {
+  var box = document.getElementById('lights');
+  box.innerHTML = '';
+  lights.forEach(function (l) {
+    var b = document.createElement('button');
+    function paint() {
+      b.className = 'light' + (l.on === true ? ' on' : '') + (l.on === null ? ' unknown' : '');
+    }
+    b.textContent = l.name;
+    paint();
+    b.onclick = function () {
+      var want = !(l.on === true);
+      busy = true; say('Switching ' + l.name + '...');
+      api('POST', '/api/light', { id: l.id, number: l.number, on: want }, function (err) {
+        busy = false;
+        if (err) return say('Error: ' + err);
+        l.on = want; paint(); say('');
+      });
+    };
+    box.appendChild(b);
+  });
+  if (!lights.length) say('No Tinxy switches found.');
+}
+function refresh() {
+  if (busy) return;
+  api('GET', '/api/lights', null, function (err, d) {
+    if (err) return say('Remote server not running? ' + err);
+    render(d.lights);
+    say(d.tinxy_error ? 'Tinxy error: ' + d.tinxy_error : '');
+  });
+}
+refresh();
+setInterval(refresh, 30000);  // also picks up switches newly added in the Tinxy app
+</script>
+</body>
+</html>

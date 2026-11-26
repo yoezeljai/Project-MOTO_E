@@ -1,0 +1,4 @@
+#!/data/data/com.termux/files/usr/bin/sh
+# Termux:Boot script: copy to ~/.termux/boot/ to start the home server at boot.
+termux-wake-lock
+cd ~/remote && python server.py >> ~/remote/server.log 2>&1

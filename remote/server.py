@@ -171,6 +171,13 @@ ALLOWED_KEYS = {
 }
 
 
+PAGES = {
+    "/": "index.html", "/index.html": "index.html",
+    "/lights": "lights.html", "/tv": "tv.html",
+    "/style.css": "style.css",
+}
+
+
 class Handler(BaseHTTPRequestHandler):
     def _json(self, obj, code=200):
         body = json.dumps(obj).encode()
@@ -184,24 +191,39 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
 
+    def _static(self, name):
+        path = os.path.join(STATIC_DIR, name)
+        ctype = "text/html; charset=utf-8" if name.endswith(".html") else "text/css"
+        with open(path, "rb") as f:
+            body = f.read()
+        self.send_response(200)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-cache")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _lights(self):
+        try:
+            lights = tinxy_list()
+            for l in lights:
+                l["on"] = tinxy_state(l["id"], l["number"])
+            return lights, None
+        except Exception as exc:
+            return [], str(exc)
+
     def do_GET(self):
-        if self.path in ("/", "/index.html"):
-            with open(os.path.join(STATIC_DIR, "index.html"), "rb") as f:
-                body = f.read()
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
-            self.send_header("Content-Length", str(len(body)))
-            self.end_headers()
-            self.wfile.write(body)
-        elif self.path == "/api/state":
-            try:
-                lights = tinxy_list()
-                for l in lights:
-                    l["on"] = tinxy_state(l["id"], l["number"])
-                tinxy_err = None
-            except Exception as exc:
-                lights, tinxy_err = [], str(exc)
-            self._json({"lights": lights, "tinxy_error": tinxy_err, "tv_on": tv_is_on()})
+        path = self.path.split("?")[0]
+        if path in PAGES:
+            self._static(PAGES[path])
+        elif path == "/api/lights":
+            lights, err = self._lights()
+            self._json({"lights": lights, "tinxy_error": err})
+        elif path == "/api/tv/state":
+            self._json({"tv_on": tv_is_on()})
+        elif path == "/api/state":  # combined, kept for the original page
+            lights, err = self._lights()
+            self._json({"lights": lights, "tinxy_error": err, "tv_on": tv_is_on()})
         else:
             self._json({"error": "not found"}, 404)
 
